@@ -1,0 +1,719 @@
+{
+  "name": "Intelligent Real-Time Financial Fraud Detection and Risk Scoring Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "transaction-risk-__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6",
+        "responseMode": "lastNode",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "64b2375e-3e27-4a85-b2b2-c07d18de26b3",
+      "name": "Transaction Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -1264,
+        -64
+      ],
+      "webhookId": "5ffdff00-61c8-4634-b5b6-b8590faa19f3",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "highRiskThreshold",
+              "type": "number",
+              "value": 70
+            },
+            {
+              "id": "id-2",
+              "name": "transactionHoldApiUrl",
+              "type": "string",
+              "value": "={{ $('Transaction Webhook').item.json.body.transaction_id }}"
+            },
+            {
+              "id": "id-3",
+              "name": "fraudAlertChannel",
+              "type": "string",
+              "value": "C0ADV0YD0G4"
+            },
+            {
+              "id": "id-4",
+              "name": "fraudTeamEmail",
+              "type": "string",
+              "value": "cherradoussama001@gmail.com"
+            },
+            {
+              "id": "id-5",
+              "name": "incidentLogSheetId",
+              "type": "string",
+              "value": "1n5bC0tH3ChtGS8kdnfE98044ZW8oHNmYSTqQJsdqd0M"
+            },
+            {
+              "id": "c5d51481-7ad2-42d9-be96-e2884a46484e",
+              "name": "ip_country",
+              "value": "={{ $json.country }}",
+              "type": "string"
+            },
+            {
+              "id": "4f39cba6-9fdb-420e-871b-2d7fad62410e",
+              "name": "ip_city",
+              "value": "={{ $json.city }}",
+              "type": "string"
+            },
+            {
+              "id": "627d56d0-1e26-45e5-a482-e77fd97c2972",
+              "name": "ip_is_proxy",
+              "value": "={{ $json.proxy }}",
+              "type": "boolean"
+            },
+            {
+              "id": "6792fd61-6cb2-401a-9191-f4f2d5b452a8",
+              "name": "ip_is_hosting",
+              "value": "={{ $json.hosting }}",
+              "type": "boolean"
+            },
+            {
+              "id": "b73efcee-e7db-4710-8f1c-58d9a0efb824",
+              "name": "ip_is_mobile",
+              "value": "={{ $json.mobile }}",
+              "type": "boolean"
+            },
+            {
+              "id": "7beb0bd9-6f31-464c-bdf6-da695a0673aa",
+              "name": "=location_mismatch: {{ $json.country !== $json.countryCode ? true : false }}",
+              "value": "={{ $json.country !== $json.countryCode ? true : false }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "4ad8f3aa-d2ec-48ec-9cc5-57f61997a28c",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -768,
+        -64
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the transaction above for fraud risk. Be very conservative with high scores — only use 70+ when multiple clear red flags exist. Apply the rules strictly.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a balanced fraud risk analyst for a payment processor.\n\nGoal: Catch real fraud while minimizing false positives.\n\nTransaction data:\n{{ $json | tojson }}\n\nIP enrichment:\n- IP country/city: {{ $json.ip_country || 'unknown' }} / {{ $json.ip_city || 'unknown' }}\n- Location mismatch: {{ $json.location_mismatch || false }}\n- Proxy/VPN/hosting IP: {{ $json.ip_is_proxy || false }} / {{ $json.ip_is_hosting || false }}\n\nStrict rules — follow exactly:\n\nLOW RISK (0–35):\n- Amount ≤ 150 + same country + velocity ≤ 4 + previous_transactions ≥ 5 → MUST be low\n- Small/local/recurring purchases are safe unless multiple other flags\n\nMEDIUM RISK (36–70):\n- Moderate anomalies (new device, mild velocity increase, single minor flag)\n\nHIGH RISK (71–100):\n- MUST assign 70+ if 2 or more of these strong flags:\n  • Amount > 1000 + velocity > 8\n  • Confirmed proxy/VPN/hosting IP + high amount or international\n  • New user (previous_transactions ≤ 2) + high amount + international\n  • Clear location mismatch + other suspicious signals\n- Example: 7500 EUR + velocity 25 + new user + proxy IP + international → score 80–95\n\nOutput ONLY clean JSON — no extra text:\n\n{\n  \"risk_score\": integer 0-100,\n  \"risk_level\": \"low\" | \"medium\" | \"high\",\n  \"main_reasons\": [\"reason 1\", \"reason 2\", ...],\n  \"explanation\": \"Short paragraph — explain why score is high/medium/low\"\n}\nHIGH RISK OVERRIDE RULES — these take priority over low-risk protection:\n\n- If amount > 2000 AND (velocity > 10 OR previous_transactions ≤ 3 OR ip_is_proxy = true OR is_international = true OR location_mismatch = true) → MUST assign risk_score ≥ 75 and risk_level \"high\"\n- If velocity > 20 OR proxy/VPN/hosting = true + amount > 1000 → MUST be 80+\n- Example: 7500 EUR + velocity 25 + new user + proxy IP + international + location mismatch → risk_score 85–95, high risk"
+        }
+      },
+      "id": "5a489bb4-9497-4d23-b92b-e392de03bb0c",
+      "name": "Fraud Detection AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -592,
+        -64
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"riskScore\": {\n\t\t\t\"type\": \"number\",\n\t\t\t\"description\": \"Risk score from 0-100\"\n\t\t},\n\t\t\"riskLevel\": {\n\t\t\t\"type\": \"string\",\n\t\t\t\"description\": \"Risk level: low, medium, or high\"\n\t\t},\n\t\t\"fraudIndicators\": {\n\t\t\t\"type\": \"array\",\n\t\t\t\"items\": {\n\t\t\t\t\"type\": \"string\"\n\t\t\t},\n\t\t\t\"description\": \"List of specific fraud signals detected\"\n\t\t},\n\t\t\"recommendation\": {\n\t\t\t\"type\": \"string\",\n\t\t\t\"description\": \"Recommended action: approve, review, or block\"\n\t\t},\n\t\t\"reasoning\": {\n\t\t\t\"type\": \"string\",\n\t\t\t\"description\": \"Explanation of the risk assessment\"\n\t\t}\n\t}\n}"
+      },
+      "id": "33575f56-1207-4b8f-a92f-ee2755da935c",
+      "name": "Risk Score Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -448,
+        160
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "leftValue": "={{ Number($json.final_risk_score) }}",
+              "rightValue": "={{$('Workflow Configuration').item.json.highRiskThreshold }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c4299bd3-12d2-451d-99c3-9e0d5a16c887",
+      "name": "Check Risk Level",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -128,
+        -64
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://httpbin.org/post",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "transactionId",
+              "value": "={{ $('Transaction Webhook').item.json.body.transaction_id }}"
+            },
+            {
+              "name": "action",
+              "value": "HOLD"
+            },
+            {
+              "name": "riskScore",
+              "value": "={{ $('Fraud Detection AI Agent').item.json.output.riskScore }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $('Fraud Detection AI Agent').item.json.output.reasoning }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cd77c7e2-7ab4-4bb2-8cd1-631b76def4a4",
+      "name": "Hold Transaction",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        128,
+        -160
+      ],
+      "typeVersion": 4.3
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.incidentLogSheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "fraud",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1n5bC0tH3ChtGS8kdnfE98044ZW8oHNmYSTqQJsdqd0M/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "labelIds",
+              "displayName": "labelIds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "logTimestamp",
+              "displayName": "logTimestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "transactionId",
+              "displayName": "transactionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customerId",
+              "displayName": "customerId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "merchant",
+              "displayName": "merchant",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "61b5716a-7753-4150-9e2f-f5d9a025e080",
+      "name": "Log High Risk Incident",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        864,
+        -160
+      ],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LiLmX6M3sGY0Hiam",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1n5bC0tH3ChtGS8kdnfE98044ZW8oHNmYSTqQJsdqd0M",
+          "mode": "list",
+          "cachedResultName": "fraud",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1n5bC0tH3ChtGS8kdnfE98044ZW8oHNmYSTqQJsdqd0M/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "fraud",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1n5bC0tH3ChtGS8kdnfE98044ZW8oHNmYSTqQJsdqd0M/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "8d634ae9-eb55-4e13-9b3a-0cd5f2ef951a",
+      "name": "Log Low Risk Transaction",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        144,
+        48
+      ],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LiLmX6M3sGY0Hiam",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "logTimestamp",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "id": "id-2",
+              "name": "transactionId",
+              "type": "string",
+              "value": "={{ $('Transaction Webhook').item.json.body.transaction_id }}"
+            },
+            {
+              "id": "id-3",
+              "name": "customerId",
+              "type": "string",
+              "value": "={{ $('Transaction Webhook').first().json.customerId }}"
+            },
+            {
+              "id": "id-4",
+              "name": "amount",
+              "type": "number",
+              "value": "={{ $('Transaction Webhook').first().json.amount }}"
+            },
+            {
+              "id": "id-5",
+              "name": "currency",
+              "type": "string",
+              "value": "={{ $('Transaction Webhook').first().json.currency }}"
+            },
+            {
+              "id": "id-6",
+              "name": "merchant",
+              "type": "string",
+              "value": "={{ $('Transaction Webhook').first().json.merchant }}"
+            },
+            {
+              "id": "id-7",
+              "name": "status",
+              "type": "string",
+              "value": "HELD"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "b808d027-f021-4ebd-9a03-138eea5fad0d",
+      "name": "Prepare Incident Log Data",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        560,
+        -160
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-3-haiku",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        160
+      ],
+      "id": "ac87deea-a872-410c-a10f-44c2d35047e7",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "FnCXnHEK7LWtAdmP",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Workflow Configuration').first().json.fraudTeamEmail }}",
+        "subject": "=URGENT: High Risk Transaction Alert - ID {{ $('Transaction Webhook').first().json.transactionId }}",
+        "message": "=<h2 style=\"color: #d32f2f;\">🚨 HIGH RISK TRANSACTION DETECTED</h2>  <p><strong>A potentially fraudulent transaction has been flagged and held for review.</strong></p>  <h3>Transaction Details:</h3> <ul>   <li><strong>Transaction ID:</strong> {{ $('Transaction Webhook').first().json.transactionId }}</li>   <li><strong>Customer ID:</strong> {{ $('Transaction Webhook').first().json.customerId }}</li>   <li><strong>Amount:</strong> {{ $('Transaction Webhook').first().json.amount }} {{ $('Transaction Webhook').first().json.currency }}</li>   <li><strong>Merchant:</strong> {{ $('Transaction Webhook').first().json.merchant }}</li>   <li><strong>Location:</strong> {{ $('Transaction Webhook').first().json.location }}</li>   <li><strong>Timestamp:</strong> {{ $('Transaction Webhook').first().json.timestamp }}</li> </ul>  <h3>Risk Assessment:</h3> <ul>   <li><strong>Risk Score:</strong> {{ $json.riskScore }}/100</li>   <li><strong>Risk Level:</strong> {{ $json.riskLevel }}</li>   <li><strong>Recommendation:</strong> {{ $json.recommendation }}</li> </ul>  <h3>Fraud Indicators Detected:</h3> <ul>   {{ $json.fraudIndicators.map(indicator => `<li>${indicator}</li>`).join(\"\") }} </ul>  <h3>AI Analysis:</h3> <p>{{ $json.reasoning }}</p>  <p style=\"color: #d32f2f;\"><strong>⚠️ The transaction has been automatically HELD. Please review immediately.</strong></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -160
+      ],
+      "id": "e7924de7-becb-4ce7-90a7-1742196d7a79",
+      "name": "Send a message",
+      "webhookId": "6089e892-e7d7-43e7-9230-3d00d1ba9a3e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ooXyxbtvhWSE9ibU",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the incoming item\nconst item = $input.first().json;\n\n// Step 1: Get the string that contains the JSON\nlet jsonString = item.output || '';\n\n// Step 2: Clean it a little and parse\nlet parsed = {};\ntry {\n  // Remove leading/trailing junk if any\n  jsonString = jsonString.trim();\n  \n  // If it starts with { it's probably already valid JSON string\n  if (jsonString.startsWith('{')) {\n    parsed = JSON.parse(jsonString);\n  }\n} catch (err) {\n  // If parse fails → fallback\n  parsed = {};\n}\n\n// Step 3: Get the risk_score (case-insensitive fallback)\nconst rawScore =\n  parsed.risk_score ||\n  parsed.riskScore ||\n  parsed.RiskScore ||\n  0;\n\n// Step 4: Convert to number & clamp 0-100\nlet finalScore = Number(rawScore);\nfinalScore = Math.max(0, Math.min(100, finalScore || 0));\n\n// Return the item with the fixed score + debug\nreturn [{\n  json: {\n    ...item,\n    final_risk_score: finalScore,\n    debug_rawScore: rawScore,           // should be 90 in this case\n    debug_parsed_risk: parsed.risk_score,  // should be 90\n    debug_jsonStringStart: jsonString.substring(0, 100) + '...'  // first part of string\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        -64
+      ],
+      "id": "30826301-9f7a-403c-81df-e5329201f8e2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "=http://ip-api.com/json/{{ $json.body.ip_address }}?fields=status,message,proxy,hosting,mobile,org,asn,country,city,regionName,lat,lon,timezone",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -960,
+        -64
+      ],
+      "id": "9e81894f-1ff5-442f-8488-fad77dcc4908",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "content": "Receives real-time transaction events from payment gateways (Stripe, PayPal, etc.)\n\n- Trigger: POST request with JSON payload\n- Expected fields: transaction_id, amount, currency, user_id, ip_address, country, velocity, etc.\n- Test URL (localhost): used during development\n- Production URL: activate workflow to use real webhooks\n",
+        "height": 400,
+        "width": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1408,
+        -304
+      ],
+      "typeVersion": 1,
+      "id": "f364a222-1505-4a99-bf27-4280533eab00",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "       CONFIGURATION & ENRICHMENT\n\nCentral settings + IP geolocation enrichment\n\n- \"Workflow Configuration\" node:\n  • highRiskThreshold (default 70–80)\n  • fraudTeamEmail\n  • incidentSheetId\n  • transactionHoldApiUrl (hold endpoint)\n- HTTP Request: IP geolocation   ip-api.com\n  → adds ip_country, location_mismatch, ip_is_proxy, etc.",
+        "height": 432,
+        "width": 352,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1008,
+        -304
+      ],
+      "typeVersion": 1,
+      "id": "a9148ee0-84c3-401b-a1be-42509c779bf8",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "             AI FRAUD ANALYSIS\n\nCore intelligence – behavioral fraud scoring with OpenAI GPT-4\n\n- Uses structured prompt to output risk_score (0–100)\n- Analyzes: amount, velocity, location mismatch, proxy flags, user history, etc.\n- Output: clean JSON → { risk_score, risk_level, main_reasons, explanation }\n- Important: prompt tuned to reduce false positives on small/local transactions",
+        "height": 688,
+        "width": 304,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -640,
+        -384
+      ],
+      "typeVersion": 1,
+      "id": "f9d8e5a9-3ecb-4d92-9bcc-1f17b6c24828",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "                                    DECISION + ACTIONS\n\n                         - IF node: final_risk_score ≥ threshold ?\n                         • True → high risk → hold (HTTP) + Gmail alert + detailed log\n                         • False → low risk → simple log to Sheets\n                         - High-risk branch: alert + evidence saved\n                         - Low-risk branch: quiet logging only",
+        "height": 624,
+        "width": 1360
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -336,
+        -400
+      ],
+      "typeVersion": 1,
+      "id": "c1a1834a-3906-4080-adfd-e4aca773bd07",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Check Risk Level": {
+      "main": [
+        [
+          {
+            "node": "Hold Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Low Risk Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hold Transaction": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transaction Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Fraud Detection AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fraud Detection AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Score Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Fraud Detection AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Incident Log Data": {
+      "main": [
+        [
+          {
+            "node": "Log High Risk Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Fraud Detection AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Prepare Incident Log Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Check Risk Level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2cc396bc-330a-4794-9fee-1d7cd80101d6",
+  "meta": {
+    "instanceId": "0748e2705e00949647fec324520e80d37a5d963c610e10356ecb8cb8cf58af4e"
+  },
+  "id": "C8mnzmhJtDHX31k6xw3sK",
+  "tags": []
+}
