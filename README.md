@@ -52,5 +52,3 @@ This project demonstrates an end-to-end, real-time fraud detection system that p
    - `fraudTeamEmail`: your alert email  
    - `incidentSheetId`: your Google Sheet ID (create a new one)
 
-4. Test with sample payloads  
-   → See `EXAMPLES.md` or use Postman to POST to the webhook URL
